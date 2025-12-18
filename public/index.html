@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>旅遊平台 — AI 客服範例</title>
+    <style>
+      body{font-family:system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial;margin:0;padding:24px;background:linear-gradient(180deg,#f7f4ef,#fff);color:#222}
+      .container{max-width:720px;margin:0 auto}
+      .chat{border-radius:12px;padding:16px;background:rgba(255,255,255,0.8);box-shadow:0 6px 18px rgba(0,0,0,0.06)}
+      #messages{min-height:120px;margin-bottom:12px}
+      .msg{padding:8px 12px;border-radius:8px;margin-bottom:8px}
+      .user{background:#eaf2ff;text-align:right}
+      .bot{background:#f1f7ee}
+      form{display:flex;gap:8px}
+      input[type=text]{flex:1;padding:8px;border-radius:8px;border:1px solid #ddd}
+      button{padding:8px 12px;border-radius:8px;border:none;background:#0066cc;color:#fff}
+      .small{font-size:0.9rem;color:#666}
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>旅遊平台 — AI 客服（簡易示範）</h1>
+
+      <section class="chat">
+        <div id="messages"></div>
+        <form id="chatForm">
+          <input id="inputMsg" type="text" placeholder="問我景點、行程或交通建議..." autocomplete="off" />
+          <button type="submit">送出</button>
+        </form>
+        <p class="small">示範：前端會呼叫 <code>/api/chat</code>（Vercel serverless handler）。</p>
+      </section>
+
+      <section style="margin-top:20px;">
+        <h2>聯絡我們（示範）</h2>
+        <form id="contactForm">
+          <input id="name" type="text" placeholder="姓名" required style="display:block;margin-bottom:8px;padding:8px;border-radius:6px;border:1px solid #ddd;width:100%" />
+          <input id="email" type="email" placeholder="email@example.com" required style="display:block;margin-bottom:8px;padding:8px;border-radius:6px;border:1px solid #ddd;width:100%" />
+          <textarea id="message" placeholder="留言內容" required style="display:block;margin-bottom:8px;padding:8px;border-radius:6px;border:1px solid #ddd;width:100%" rows="4"></textarea>
+          <button id="sendContact" type="submit">送出聯絡表單</button>
+        </form>
+      </section>
+    </div>
+
+    <script>
+      const messagesEl = document.getElementById('messages');
+      const chatForm = document.getElementById('chatForm');
+      const inputMsg = document.getElementById('inputMsg');
+
+      function appendMessage(text, cls){
+        const div = document.createElement('div');
+        div.className = 'msg ' + cls;
+        div.textContent = text;
+        messagesEl.appendChild(div);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      }
+
+      chatForm.addEventListener('submit', async (e)=>{
+        e.preventDefault();
+        const text = inputMsg.value.trim();
+        if(!text) return;
+        appendMessage(text, 'user');
+        inputMsg.value = '';
+        appendMessage('思考中...', 'bot');
+
+        try{
+          const r = await fetch('/api/chat',{
+            method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text})
+          });
+          const data = await r.json();
+          // 移除上一個 '思考中...'
+          const last = messagesEl.querySelector('.bot:last-child');
+          if(last && last.textContent==='思考中...') last.remove();
+          if(data && data.reply) appendMessage(data.reply,'bot');
+          else appendMessage('未收到回覆','bot');
+        }catch(err){
+          console.error(err);
+          appendMessage('發生錯誤，請稍後再試','bot');
+        }
+      });
+
+      const contactForm = document.getElementById('contactForm');
+      contactForm.addEventListener('submit', async (e)=>{
+        e.preventDefault();
+        const payload = {
+          name: document.getElementById('name').value,
+          email: document.getElementById('email').value,
+          message: document.getElementById('message').value
+        };
+        try{
+          const r = await fetch('/api/contact',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+          const d = await r.json();
+          alert(d.status === 'ok' ? '已送出' : '送出失敗');
+        }catch(e){
+          console.error(e);alert('送出失敗');
+        }
+      });
+    </script>
+  </body>
+</html>
